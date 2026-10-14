@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Studio Marketing</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--mut:#6b7280;--line:#e5e7eb;--ok:#16a34a;--bad:#dc2626;--warn:#d97706;--acc:#25d366}
+  @media(prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#181b21;--ink:#eceef2;--mut:#9aa1ad;--line:#2a2f38}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+  main{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:320px 1fr}
+  @media(max-width:800px){main{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:0 0 10px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .stat{text-align:center;padding:10px;border:1px solid var(--line);border-radius:8px}
+  .stat b{display:block;font-size:24px}.stat span{color:var(--mut);font-size:12px}
+  .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:8px}.bar i{display:block;height:100%;background:var(--acc)}
+  textarea,input{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+  textarea{min-height:120px;resize:vertical}
+  label{display:block;font-size:12px;color:var(--mut);margin:8px 0 2px}
+  button{padding:8px 14px;border:0;border-radius:8px;background:var(--ink);color:var(--bg);font:inherit;cursor:pointer}
+  button.go{background:var(--acc);color:#052e16;font-weight:600}button.stop{background:var(--bad);color:#fff}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:0 0 auto}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  #qr{text-align:center}#qr img{width:100%;max-width:280px;border-radius:8px;background:#fff}
+  .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
+  .sent{color:var(--ok)}.failed{color:var(--bad)}.pending{color:var(--warn)}.skipped{color:var(--mut)}
+  .tablewrap{max-height:520px;overflow:auto}
+  table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:14px}
+  th{position:sticky;top:0;background:var(--card);color:var(--mut);font-weight:500}
+  .mut{color:var(--mut);font-size:13px}.msg{margin-top:6px;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <div style="display:grid;gap:16px;align-content:start">
+    <section class="card">
+      <h1>Studio Marketing</h1>
+      <div class="mut">WhatsApp: <span id="waState" class="pill">…</span></div>
+      <div id="qr"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="startBtn" class="go">▶ Start sending</button>
+        <button id="stopBtn" class="stop" style="display:none">■ Stop</button>
+        <button id="logoutBtn" class="ghost">Log out</button>
+      </div>
+      <div class="mut msg" id="note"></div>
+    </section>
+
+    <section class="card">
+      <h2>Message</h2>
+      <textarea id="message"></textarea>
+      <div class="mut">Use <code>{name}</code> to insert each client's name.</div>
+      <div class="grid3">
+        <div><label>Min delay (s)</label><input id="minDelay" type="number" min="5"></div>
+        <div><label>Max delay (s)</label><input id="maxDelay" type="number" min="5"></div>
+        <div><label>Daily limit</label><input id="dailyLimit" type="number" min="1"></div>
+      </div>
+      <label>Default country code (for numbers without one)</label>
+      <input id="countryCode">
+      <div class="row" style="margin-top:10px"><button id="saveBtn">Save</button><span class="mut" id="saved"></span></div>
+    </section>
+
+    <section class="card">
+      <h2>Add clients (the sheet)</h2>
+      <label>Google Sheet link (shared "Anyone with the link can view")</label>
+      <input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…">
+      <button id="importUrl" style="margin-top:6px">Import from sheet</button>
+      <label>…or paste rows (name, phone) from Excel / Sheets</label>
+      <textarea id="paste" style="min-height:80px" placeholder="Ahmed, 01012345678&#10;Sara, +201112223334"></textarea>
+      <button id="importPaste" style="margin-top:6px">Import pasted rows</button>
+      <div class="mut msg" id="importMsg"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Targets</h2>
+    <div class="stats">
+      <div class="stat"><b id="sTarget">0</b><span>Target clients</span></div>
+      <div class="stat"><b id="sSent" class="sent">0</b><span>Sent</span></div>
+      <div class="stat"><b id="sPending" class="pending">0</b><span>Pending</span></div>
+      <div class="stat"><b id="sFailed" class="failed">0</b><span>Failed</span></div>
+    </div>
+    <div class="bar"><i id="progress" style="width:0"></i></div>
+    <div class="row" style="margin-bottom:8px">
+      <span class="mut" id="today"></span>
+      <button class="ghost" id="retry">Retry failed</button>
+      <button class="ghost" id="clear">Clear all</button>
+    </div>
+    <div class="tablewrap">
+      <table><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Status</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const api = (p, body, method) => fetch('/api/' + p, body === undefined && !method ? {} : { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }).then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.statusText); return j; });
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let formLoaded = false;
+
+async function refresh() {
+  const s = await fetch('/api/state').then((r) => r.json());
+  const w = s.whatsapp;
+  $('waState').textContent = { ready: 'Connected ✓', qr: 'Scan QR', starting: 'Starting…', authenticated: 'Loading…', error: 'Error', disconnected: 'Disconnected' }[w.state] || w.state;
+  $('qr').innerHTML = w.qr ? `<img src="${w.qr}" alt="QR"><div class="mut">WhatsApp on your phone → Settings → Linked devices → Link a device → scan this</div>` : (w.error ? `<div class="failed">${esc(w.error)}</div>` : '');
+  $('startBtn').style.display = s.campaign.running ? 'none' : '';
+  $('stopBtn').style.display = s.campaign.running ? '' : 'none';
+  $('startBtn').disabled = w.state !== 'ready';
+  $('note').textContent = s.campaign.note || '';
+  const st = s.stats;
+  $('sTarget').textContent = st.target; $('sSent').textContent = st.sent; $('sPending').textContent = st.pending; $('sFailed').textContent = st.failed;
+  $('progress').style.width = (st.target ? (st.sent / st.target) * 100 : 0) + '%';
+  $('today').textContent = `Today: ${s.sentToday} / ${s.settings.dailyLimit}`;
+  if (!formLoaded) {
+    for (const k of ['message', 'minDelay', 'maxDelay', 'dailyLimit', 'countryCode']) $(k).value = s.settings[k];
+    formLoaded = true;
+  }
+  $('rows').innerHTML = s.clients.map((c, i) => `<tr>
+    <td>${i + 1}</td><td>${esc(c.name) || '<span class="mut">—</span>'}</td><td>${esc(c.phone)}</td>
+    <td><span class="${c.status}">${c.status}</span>${c.error ? `<div class="mut">${esc(c.error)}</div>` : ''}${c.id === s.campaign.current ? ' …' : ''}</td>
+    <td><button class="ghost" onclick="del('${c.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="mut">No clients yet — import a sheet on the left.</td></tr>';
+}
+window.del = (id) => api('clients/' + id, undefined, 'DELETE').then(refresh);
+
+$('saveBtn').onclick = async () => {
+  await api('settings', { message: $('message').value, minDelay: $('minDelay').value, maxDelay: $('maxDelay').value, dailyLimit: $('dailyLimit').value, countryCode: $('countryCode').value });
+  $('saved').textContent = 'Saved ✓'; setTimeout(() => ($('saved').textContent = ''), 2000);
+};
+const imp = (body) => api('clients/import', body).then((r) => { $('importMsg').textContent = `Added ${r.added}, skipped ${r.duplicates} duplicates`; refresh(); }).catch((e) => { $('importMsg').textContent = e.message; });
+$('importUrl').onclick = () => imp({ url: $('sheetUrl').value });
+$('importPaste').onclick = () => imp({ text: $('paste').value }).then(() => ($('paste').value = ''));
+$('startBtn').onclick = async () => { await $('saveBtn').onclick(); api('campaign/start').catch((e) => alert(e.message)).then(refresh); };
+$('stopBtn').onclick = () => api('campaign/stop').then(refresh);
+$('logoutBtn').onclick = () => confirm('Log out of WhatsApp?') && api('whatsapp/logout').then(() => location.reload());
+$('retry').onclick = () => api('clients/retry-failed').then(refresh);
+$('clear').onclick = () => confirm('Delete all clients?') && api('clients/clear').then(refresh);
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>
